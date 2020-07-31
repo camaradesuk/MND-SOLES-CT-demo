@@ -1,0 +1,13 @@
+name: MND-SOLES-CT
+title: MND-SOLES-CT
+username:
+account: camarades
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 2513996
+bundleId: 3330519
+url: https://camarades.shinyapps.io/MND-SOLES-CT/
+when: 1593453111.55844
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: .httr-oauth|.RData|CAMARADES_bullet_copy.jpg|main_old.R|plist.csv|pList.csv|Shinyappdemodruglist.csv|shinyappdemolist.csv

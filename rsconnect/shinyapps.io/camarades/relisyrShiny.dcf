@@ -1,0 +1,13 @@
+name: relisyrShiny
+title: relisyrShiny
+username:
+account: camarades
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 2513968
+bundleId: 3326106
+url: https://camarades.shinyapps.io/relisyrShiny/
+when: 1593359546.24529
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: main_old.R|plist.csv|pList.csv|Shinyappdemodruglist.csv|shinyappdemolist.csv
