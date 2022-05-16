@@ -1,0 +1,60 @@
+---
+title: "Drug CV" 
+author: "MND-SOLES-CT/CAMARADES Edinburgh"
+date: "`r format(Sys.time(), '%d %B %Y')`"
+output: html_document
+params:
+  n: NA
+
+  
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(googlesheets4)
+googleSheetId <- "1-TRbnLo4ypCdlkhsWCRh-wVBXwtwbpPm0EhjfaesNhQ"
+demodrugSummaryName <- "demodrugSummary"
+demodrugSummary <-
+  googlesheets4::read_sheet(googleSheetId, sheet = demodrugSummaryName)
+n<-params$n
+
+```
+
+```{r headline,echo=F}
+"Drug name"
+"Route available"
+
+```
+
+## ReLiSyR-MND data
+### Overview 
+This bubble chart plots drugs in our review according to Clinical Product Score (colour scale), number of clinical publications represented by size of bubble, standard mean difference (SMD) of survival in in vivo studies on the x-axis, and SMD of cell death in in vitro studies on the y-axis.
+
+
+```{r table, echo=FALSE}
+#param[["table"]]
+
+demodrugSummary
+
+  selecteddrugranklist <- demodrugSummary %>%
+      filter(Drug == n)%>%
+      select(
+        "Drug",
+        "productScore",
+        "nPublication",
+        "efficacyScore"  ,
+        "safetyScore"  ,
+        "studySizeScore" ,
+        "qualityScore"  ,
+        "invivoSurvivalSMD",
+        "nInvivoStudies"   ,
+        "nCellDeathSMD"   ,
+        "nInVitroStudies"
+      ) %>%
+      arrange(desc(productScore))
+
+ 
+print(selecteddrugranklist)
+
+```

@@ -1,7 +1,7 @@
 header <- dashboardHeader(title = "MND-SOLES-CT DEMO")
 
 dashboardSidebar <- dashboardSidebar(sidebarMenu(
-    menuItem(
+  menuItem(
     "Drug recommendation demo",
     tabName = "demoDR",
     icon = icon("clipboard-list")),
@@ -25,26 +25,27 @@ dashboardSidebar <- dashboardSidebar(sidebarMenu(
            tabName = "demodrugCV", 
            icon = icon("tablets")),
   
-  menuItem(
-    "Quick downloads demo",
-    tabName = "demodownload",
-    icon = icon("download")
-  ),
+  # menuItem(
+  #   "Quick downloads demo",
+  #   tabName = "demodownload",
+  #   icon = icon("download")
+  # ),
   menuItem("About", tabName = "about", icon = icon("info"))
-  )  )
+)  )
 
 
 ###########################DEMO UI###########################
 
 body <- dashboardBody(
   h2("DISCLAIMER: THIS IS A DEMO VERSION"),
+  p("This version is for demonstration of selected features only and uses demo data."),
   tabItems(
     
     #drugranks tables tab-------------------------------------
     tabItem(tabName = "demoDR",
             fluidRow(
               box(
-                h1("MND-SOLES CT"),
+                h1("MND-SOLES-CT"),
                 h3("Motor Neuron Disease Systematic Online Living Evidence Summary for Clinical Trials"),
                 p(strong("MND-SOLES-CT"), "aims to provide a living summary of evidence to guide prioritisation of drugs for evaluation in MND clinical trials. MND-SOLES CT reports current curated evidence from the"  ,strong("Repurposing Living Systematic Review-MND (ReLiSyR-MND)"), ", a three-part machine learning assisted living systematic review of:"),
                 p("1. Clinical literature of MND and other neurodegenerative diseases which may share common pivotal pathways, namely, Alzheimer's disease (AD), Frontotemporal dementia (FTD), Huntington's disease (HD), Multiple Sclerosis (MS) and Parkinson's disease (PD). We scored each publication based on efficacy, safety, quality and study size against a predefined metric and generated a product score for each drug."),
@@ -54,12 +55,12 @@ body <- dashboardBody(
                 p("More information on our methodology can be found under the About tab.")
                 , width=12)),
             
-            fluidRow(
-              box(title="Clinical, in vivo and in vitro scores by drug",
-                  p("This bubble chart plots drugs in our review according to Clinical Product Score (colour scale), number of clinical publications represented by size of bubble, standard mean difference (SMD) of survival in in vivo studies on the x-axis, and SMD of cell death in in vitro studies on the y-axis."),
-                  plotlyOutput("demodrugrankchart") ,width=12, height=700
-              )
-            ), 
+            # fluidRow(
+            #   box(title="Clinical, in vivo and in vitro scores by drug",
+            #       p("This bubble chart plots drugs in our review according to Clinical Product Score (colour scale), number of clinical publications represented by size of bubble, standard mean difference (SMD) of survival in in vivo studies on the x-axis, and SMD of cell death in in vitro studies on the y-axis."),
+            #       plotlyOutput("demodrugrankchart") ,width=12, height=700
+            #   )
+            # ), 
             
             
             fluidRow(
@@ -170,7 +171,7 @@ body <- dashboardBody(
                    "(",
                    round(demopercentClinicalDualAnnotated,2),
                    "%) have been dual annotated and",
-                   nClinicalReconciled,
+                   demonClinicalReconciled,
                    "(",
                    round(demopercentClinicalReconciled,2),
                    "%) have been fully reconciled."
@@ -368,19 +369,25 @@ body <- dashboardBody(
       h1("Drug CV"),
       fluidPage(
         selectInput("demodrug", "Select Drug", demodrugList, multiple=FALSE),
+        # downloadButton("drugCV", "Download Drug CV pdf"),
         tabsetPanel(type="tabs",
                     tabPanel("Overview",
-                             box(title="Clinical, in vivo and in vitro scores by drug",
-                                 p("This bubble chart plots drugs in our review according to Clinical Product Score (colour scale), number of clinical publications represented by size of bubble, standard mean difference (SMD) of survival in in vivo studies on the x-axis, and SMD of cell death in in vitro studies on the y-axis."),
-                                 plotlyOutput("demoselecteddrugrankchart") ,width=12, height=700
-                             ),
-                             
                              fluidRow(
                                box(
                                  width = 12,
                                  DT::dataTableOutput("demoselecteddrugranklist")
                                )
-                             )),
+                             ),
+                             box(title="Clinical scores overview",width=12, height=500,
+                                 p("Violin plot of drug scores, selected drug highlighted in red; bubble plot of clinical subscores with selected drug highlighted in black."),
+                                 fluidRow(
+                                   column(width = 6,
+                                          plotOutput("demoselecteddrugrankchart") ),
+                                   column(width = 6,
+                                          plotOutput("demoselecteddrugbubblechart")))
+                             )
+                             
+                    ),
                     tabPanel("Clinical",
                              h3("Clinical Summary"),
                              fluidRow(
@@ -434,7 +441,7 @@ body <- dashboardBody(
                                           plotlyOutput("demoinvivobehavioralforest",height =200 , width=700),
                                           plotlyOutput("demoinvivobiochemicalforest",height =200, width=700),
                                           plotlyOutput("demoinvivohistologicalforest",height =200, width=700)
-                                          ))),
+                                      ))),
                              
                              fluidRow(
                                
@@ -460,33 +467,32 @@ body <- dashboardBody(
     ),
     #quickdownload tab
     
-    tabItem(
-      tabName="demodownload",
-      fluidRow(
-        box(title="Download all fully categorised references", status="success", width=4,
-            p("Download data from our dataset of fully categorised papers only (annotated by at least 2 reviewers)"),
-            downloadBttn("democatclinicalpubs", "Download categorised clinical references"),
-            downloadBttn("democatinvivopubs", "Download categorised in vivo references"),
-            downloadBttn("democatinvitropubs", "Download categorised in vitro references")),
-        
-        box(title= "Download all unique included references", status="primary", width=4,
-            downloadBttn("demoallclinicalpubs",
-                         label= "Download all clinical references"),
-            downloadBttn("demoallinvivopubs",
-                         label="Download all in vivo references"),
-            downloadBttn("demoallinvitropubs", "Download all in vitro references"))
-      )),
+    # tabItem(
+    #   tabName="demodownload",
+    #   fluidRow(
+    #     box(title="Download all fully categorised references", status="success", width=4,
+    #         p("Download data from our dataset of fully categorised papers only (annotated by at least 2 reviewers)"),
+    #         downloadBttn("democatclinicalpubs", "Download categorised clinical references"),
+    #         downloadBttn("democatinvivopubs", "Download categorised in vivo references"),
+    #         downloadBttn("democatinvitropubs", "Download categorised in vitro references")),
+    #     
+    #     box(title= "Download all unique included references", status="primary", width=4,
+    #         downloadBttn("demoallclinicalpubs",
+    #                      label= "Download all clinical references"),
+    #         downloadBttn("demoallinvivopubs",
+    #                      label="Download all in vivo references"),
+    #         downloadBttn("demoallinvitropubs", "Download all in vitro references"))
+    #   )),
     
-  
-    #about tab-------------------------------------
+    #
     tabItem(
       tabName = "about",
       fluidRow(
         column(width=7,
                box(
-                 title="What is MND-SOLES-CT?", width=NULL,
+                 title="What is MND-SOLES-CT?", width=NULL,  status="info",
                  p(strong("MND-SOLES-CT"), "is a", 
-                   tags$a(href="http://www.dcn.ed.ac.uk/camarades/", "CAMARADES"),
+                   tags$a(href="https://www.ed.ac.uk/clinical-brain-sciences/research/camarades/", "CAMARADES"),
                    "SOLES (Systematic Online Living Evidence Summary) project aiming to provide a living summary of evidence to guide prioritisation of drugs for evaluation in MND clinical trials, specificially",
                    tags$a(href="https://mnd-smart.org.uk", "MND-SMART"),
                    ". MND-SOLES-CT reports evidence from", strong("Repurposing Living Systematic Review-MND (ReLiSyR-MND)"), "a three-part machine learning assisted living systematic reviews of:",
@@ -497,17 +503,17 @@ body <- dashboardBody(
                      tags$li("In vitro studies of MND and FTD models including induced pluripotent stem cell studies.")
                    ))),
                
-               box(title="Methodology", width=NULL,
+               box(title="Methodology", width=NULL,status="info",
                    p("Our methodology is detailed in our",
-                     tags$a(href="TOUPDATEWHENAVAILABLE", "protocol."),
-                     "We adopted a systematic approach of evaluating drug candidates which we have previously used to guide drug selection for the Multple Sclerosis Secondary Progreessive Multi-Arm Randomisation Trial (MS-SMART) a  multi-arm phase IIb randomised controlled trial comparing the efficacy of three neuroprotective drugs in secondary progressive multiple sclerosis. These principles of drug selection were published by",
+                     tags$a(href="https://mfr.de-1.osf.io/render?url=https://osf.io/5jp43/?direct%26mode=render%26action=download%26mode=render", "protocol."),
+                     "We adopted a systematic approach of evaluating drug candidates which we have previously used to guide drug selection for the Multple Sclerosis Secondary Progressive Multi-Arm Randomisation Trial (MS-SMART) a  multi-arm phase IIb randomised controlled trial comparing the efficacy of three neuroprotective drugs in secondary progressive multiple sclerosis. These principles of drug selection were published by",
                      tags$a(href="https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0117705","Vesterinen et al."),
                      "in 2015."),
                    p("This approach, which adopts a structured, systematic method combined with independent expert(s) evaluation, was designed to identify candidate drugs for evaluation in clinical trials for people with neurodegenerative diseases, including MND, on account of the compelling evidence for shared dysregulated pathways and processes across neurodegenerative disorders. 
-                  Critically, the structured evaluation takes into account not only biological plausibility and efficacy but also safety and quality of previous studies. This includes adopting benchmark practice such as Delphi and PICOS framework."),
+                     Critically, the structured evaluation takes into account not only biological plausibility and efficacy but also safety and quality of previous studies. This includes adopting benchmark practice such as Delphi and PICOS framework."),
                    p("1.", strong("Living Search"), 
                      ": We use the",
-                     tags$a(href="https://app.syrf.org.uk","Systematic Review Facility (SyRF) platform"),
+                     tags$a(href="https://syrf.org.uk","Systematic Review Facility (SyRF) platform"),
                      ", taking as its starting point automatic updating of the PubMed search."),
                    p("2.", strong("Citation Screening"),
                      ": Using a machine learning algorithm which has been trained and validated using human decisions, publications are screened for inclusion based on title and abstract."), 
@@ -522,26 +528,22 @@ body <- dashboardBody(
                    p("6.", strong("Data Analysis"),
                      ": We will analyse the results as follows:",
                      tags$ul(
-                       tags$li("Clinical review: For each publication, we assigned scores (1-4) based on efficacy [E], safety [S], study size [SS] and quality [Q] according to our predefined metrc (see",
-                               tags$a(href="https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0117705#sec006", "Vesterinen et al 2015"), 
-                               ". For each drug, we calculated a clinical product score, which is the product of the median publication scores for safety, efficacy, quality, study size, and log10(1 + number of publications)."),
+                       tags$li("Clinical review:","For each publication, we calculated a",
+                               # includeHTML("Drug-Scoring-Method.html"),
+                               tags$a(href = "https://mfr.de-1.osf.io/render?url=https://osf.io/8k4h2/?direct%26mode=render%26action=download%26mode=render", "distance score"),
+                               "based on Euclidean distance of efficacy and safety scores weighted by quality and study size. For each drug, we calculate a drug score using the number of publications describing the drug (n) and median publication distance score for all publications describing data for that drug:", withMathJax("$$\\text{drug score}\\ = log10{(n+1)} \\times {(\\text{median distance score})}$$"),
+                               
+                               "Separately, we will calculate median subscores for efficacy, safety, quality and study size across all publications for each drug."),
                        tags$li("Animal invivo review and in vitro review: An individual meta‐analysis will be carried out for each intervention identified. We will summarise the effects of interventions where there are 3 or more publications in which that intervention has been tested reporting findings from at least 5 experiments. Depending on the nature of the outcomes reported we will use either standardised mean difference (SMD) or normalised mean difference (NMD) random effects meta-analysis with REML estimates of tau. Specifically, if fewer than 70% of outcomes are suitable for NMD analysis we will use SMD. Differences between groups of studies will be identified using meta-regression."
                        ))
                    ))),
-        
-        
-        
-        
-        
-        
-        
         column(width=4,
                box(title = "CAMARADES", width=NULL, status="danger", 
-                   p("The", tags$a(href="http://www.dcn.ed.ac.uk/camarades/", "CAMARADES"), "(Collaborative Approach to Meta-Analysis and Review of 
-                  Animal Data from Experimental Studies) group specialise in performing", strong("systematic review and meta-analysis"), "of data
-                  from experimental studies. Our interests range from identifying potential sources of bias in in vivo and in vitro studies; 
-                  developing automation tools for evidence synthesis; developing recommendations for improvements in the design and
-                  reporting; through to developing meta-analysis methodology to better apply to in basic research studies."),
+                   p("The", tags$a(href="https://www.ed.ac.uk/clinical-brain-sciences/research/camarades/", "CAMARADES"), "(Collaborative Approach to Meta-Analysis and Review of 
+                     Animal Data from Experimental Studies) group specialise in performing", strong("systematic review and meta-analysis"), "of data
+                     from experimental studies. Our interests range from identifying potential sources of bias in in vivo and in vitro studies; 
+                     developing automation tools for evidence synthesis; developing recommendations for improvements in the design and
+                     reporting; through to developing meta-analysis methodology to better apply to in basic research studies."),
                    p("Follow us on twitter", tags$a(href="https://twitter.com/camarades_?", "@CAMARADES_"))),
                box(title="CAMARADES Evidence Summary Projects", width=NULL, status="danger",
                    p("CAMARADES have produced other projects providing curated online evidence summaries in other disease areas including the", 
@@ -570,9 +572,104 @@ body <- dashboardBody(
                      tags$a(href="https://www.myname5doddie.co.uk/", "My Name'5 Doddie Foundation"),
                      "."
                    ))
-               
-               
         ))),
+    
+    
+    #about tab-------------------------------------
+    # tabItem(
+    #   tabName = "about",
+    #   fluidRow(
+    #     column(width=7,
+    #            box(
+    #              title="What is MND-SOLES-CT?", width=NULL,
+    #              p(strong("MND-SOLES-CT"), "is a", 
+    #                tags$a(href="http://www.dcn.ed.ac.uk/camarades/", "CAMARADES"),
+    #                "SOLES (Systematic Online Living Evidence Summary) project aiming to provide a living summary of evidence to guide prioritisation of drugs for evaluation in MND clinical trials, specificially",
+    #                tags$a(href="https://mnd-smart.org.uk", "MND-SMART"),
+    #                ". MND-SOLES-CT reports evidence from", strong("Repurposing Living Systematic Review-MND (ReLiSyR-MND)"), "a three-part machine learning assisted living systematic reviews of:",
+    #                tags$ol(
+    #                  tags$li(
+    #                    "Clinical literature of MND and other neurodegenerative diseases which may share common pivotal pathways, namely, Alzheimer's disease (AD), Frontotemporal dementia (FTD), Huntington's disease (HD), Multiple Sclerosis (MS) and Parkinson's disease (PD)"),
+    #                  tags$li("Animal in vivo literature of MND and FTD models."),
+    #                  tags$li("In vitro studies of MND and FTD models including induced pluripotent stem cell studies.")
+    #                ))),
+    #            
+    #            box(title="Methodology", width=NULL,
+    #                p("Our methodology is detailed in our",
+    #                  tags$a(href="TOUPDATEWHENAVAILABLE", "protocol."),
+    #                  "We adopted a systematic approach of evaluating drug candidates which we have previously used to guide drug selection for the Multple Sclerosis Secondary Progressive Multi-Arm Randomisation Trial (MS-SMART) a  multi-arm phase IIb randomised controlled trial comparing the efficacy of three neuroprotective drugs in secondary progressive multiple sclerosis. These principles of drug selection were published by",
+    #                  tags$a(href="https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0117705","Vesterinen et al."),
+    #                  "in 2015."),
+    #                p("This approach, which adopts a structured, systematic method combined with independent expert(s) evaluation, was designed to identify candidate drugs for evaluation in clinical trials for people with neurodegenerative diseases, including MND, on account of the compelling evidence for shared dysregulated pathways and processes across neurodegenerative disorders. 
+    #               Critically, the structured evaluation takes into account not only biological plausibility and efficacy but also safety and quality of previous studies. This includes adopting benchmark practice such as Delphi and PICOS framework."),
+    #                p("1.", strong("Living Search"), 
+    #                  ": We use the",
+    #                  tags$a(href="https://app.syrf.org.uk","Systematic Review Facility (SyRF) platform"),
+    #                  ", taking as its starting point automatic updating of the PubMed search."),
+    #                p("2.", strong("Citation Screening"),
+    #                  ": Using a machine learning algorithm which has been trained and validated using human decisions, publications are screened for inclusion based on title and abstract."), 
+    #                p("3.", strong("Filtering drugs by inclusion logic"),
+    #                  ": Text mining approaches (Regular Expressions deployed in R and taking as source material title and abstract) are used to identify disease and drug studied. A second algorithm is used to identify drugs which have been tested in at least one clinical study in MND; or have been tested clinically in two of the other specified conditions."),
+    #                p("4.", strong("Longlisting by trial investigators"),
+    #                  ": Trial investigators reviewed the drugs filtered, excluding drugs which met the following critera: (i) previously considered unsuitable by expert panel due to lack of biological plausibility, drugs with unfavourable safety profiles in MND patients and drugs tested more than 3 times in MND population; (ii) drugs available over-the-counter as these may affect trial integrity; (iii) compounds which are not feasible for the next arms due to supply issues, such as compopunds not listed in the current version of the British National Formulary; (iv) drugs without oral preparations; and (v) drugs that are deemed by investigators to be unsafe/inappropriate for clinical trial in the current setting."),
+    #                p("5.", strong("Data extraction"), 
+    #                  ": Our team of reviewers extract data specified in our protocol on the",
+    #                  tags$a(href="https://syrf.org.uk", "SyRF platform"),
+    #                  "from all included publications for longlisted drugs. Each publication will be annotated by at least two reviewers, with any differences reconciled by a third reviewer."),
+    #                p("6.", strong("Data Analysis"),
+    #                  ": We will analyse the results as follows:",
+    #                  tags$ul(
+    #                    tags$li("Clinical review: For each publication, we assigned scores (1-4) based on efficacy [E], safety [S], study size [SS] and quality [Q] according to our predefined metrc (see",
+    #                            tags$a(href="https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0117705#sec006", "Vesterinen et al 2015"), 
+    #                            ". For each drug, we calculated a clinical product score, which is the product of the median publication scores for safety, efficacy, quality, study size, and log10(1 + number of publications)."),
+    #                    tags$li("Animal invivo review and in vitro review: An individual meta‐analysis will be carried out for each intervention identified. We will summarise the effects of interventions where there are 3 or more publications in which that intervention has been tested reporting findings from at least 5 experiments. Depending on the nature of the outcomes reported we will use either standardised mean difference (SMD) or normalised mean difference (NMD) random effects meta-analysis with REML estimates of tau. Specifically, if fewer than 70% of outcomes are suitable for NMD analysis we will use SMD. Differences between groups of studies will be identified using meta-regression."
+    #                    ))
+    #                ))),
+    #     
+    #     
+    #     
+    #     
+    #     
+    #     
+    #     
+    #     column(width=4,
+    #            box(title = "CAMARADES", width=NULL, status="danger", 
+    #                p("The", tags$a(href="http://www.dcn.ed.ac.uk/camarades/", "CAMARADES"), "(Collaborative Approach to Meta-Analysis and Review of 
+    #               Animal Data from Experimental Studies) group specialise in performing", strong("systematic review and meta-analysis"), "of data
+    #               from experimental studies. Our interests range from identifying potential sources of bias in in vivo and in vitro studies; 
+    #               developing automation tools for evidence synthesis; developing recommendations for improvements in the design and
+    #               reporting; through to developing meta-analysis methodology to better apply to in basic research studies."),
+    #                p("Follow us on twitter", tags$a(href="https://twitter.com/camarades_?", "@CAMARADES_"))),
+    #            box(title="CAMARADES Evidence Summary Projects", width=NULL, status="danger",
+    #                p("CAMARADES have produced other projects providing curated online evidence summaries in other disease areas including the", 
+    #                  tags$a(href="https://camarades.shinyapps.io/COVID-19-SOLES", "COVID-19 Systematic Online Living Evidence Summary (SOLES) project"), ",",
+    #                  tags$a(href="https://camarades.shinyapps.io/LivingEvidence_AD", "Transgenic Animal Models of Alzheimer's Disease"), 
+    #                  "and",
+    #                  tags$a(href="https://khair.shinyapps.io/CIPN", "Chemotherapy induced peripheral neuropathy"), ".")),
+    #            
+    #            box(title = "MND-SMART", width=NULL, status="primary",
+    #                p("The MND-SOLES-CT is a collaboration with investigators of the", tags$a(href="https://mnd-smart.org","Motor Neurone Disease – Systematic Multi-arm Adaptive Randomised Trial (MND-SMART)"),
+    #                  "team to inform selection of the drugs for future arms of the trial. MND-SMART is registered on clinicaltrials.gov",
+    #                  tags$a(href="https://www.clinicaltrials.gov/ct2/show/NCT04302870", "(NCT04302870)"),
+    #                  ". MND-SMART is an adaptive multi-arm multi-stage clinical trial aiming to efficiently evaluate repurposed drugs in MND. It is led by the",
+    #                  tags$a (href="http://euanmacdonaldcentre.org/", "Euan MacDonald Centre"),
+    #                  "based at the",
+    #                  tags$a(href="https://www.ed.ac.uk/", "University of Edinburgh"),
+    #                  "alongside colleagues from",
+    #                  tags$a (href="https://www.ucl.ac.uk/", "University College London"),
+    #                  "and the",
+    #                  tags$a (href="https://warwick.ac.uk/", "University of Warwick"),
+    #                  ". The trial receives funding from the",
+    #                  tags$a( href="http://euanmacdonaldcentre.org/", "Euan MacDonald Centre for MND Research"),
+    #                  ",",
+    #                  tags$a(href="https://www.mndscotland.org.uk/", "MND Scotland"), 
+    #                  "and",
+    #                  tags$a(href="https://www.myname5doddie.co.uk/", "My Name'5 Doddie Foundation"),
+    #                  "."
+    #                ))
+    #            
+    #            
+    #     ))),
     
     tabItem(
       tabName="download",
@@ -603,9 +700,9 @@ body <- dashboardBody(
     
     
     
-
-  
-  ))
+    
+    
+        ))
 shinyUI(dashboardPage(skin = "blue",
                       header,
                       dashboardSidebar,

@@ -14,9 +14,7 @@ source("drugtochart.R")
 library(knitr)
 library(rmarkdown)
 library(metaviz)
-
-googleSheetId <- "1-TRbnLo4ypCdlkhsWCRh-wVBXwtwbpPm0EhjfaesNhQ"
-sheets_deauth()
+source("configure.R")
 
 demoinvivoPublicationListName <- "demoinvivoPublicationList"
 demoinvitroPublicationListName <- "demoinvitroPublicationList"
@@ -143,9 +141,10 @@ demopercentInvitroReconciled <-
   demonInvitroReconciled / demonInvitroCoreDrugsPubs * 100
 
 demodrugList <- sort(intersect(demodrugSummary$Drug, demopublicationList$Drug))
-
+demodrugNumber <- gsub("drug", "", demodrugList)%>%as.numeric()%>% sort()
+demodrugList <- paste0("drug", demodrugNumber)
 #Progress invivo
-demoinvivoReviewSummary <- progressSummary[2,]
+demoinvivoReviewSummary <- demoprogressSummary[2,]
 
 demoinvivoUpdateDate <- demoinvivoReviewSummary$Date
 

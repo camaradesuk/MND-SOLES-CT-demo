@@ -3,7 +3,8 @@
 shinyServer(function(input, output, session) {
   
   showModal(modalDialog(
-    title="Disclaimer: This web application is under development and has not been officially released yet."
+    title="Disclaimer: This is a demo version",
+    "This version is for demonstration of selected features only and uses demo data."
   ))
   ##############DEMO VERSION###################################
   #drug recommendations-------------------------------------
@@ -11,11 +12,11 @@ shinyServer(function(input, output, session) {
     mydf<-demodrugSummary %>%
       select(
         "Drug",
-        "productScore",
+        "distanceScore",
         "nPublication",
         "efficacyScore"  ,
         "safetyScore"  ,
-        "studySizeScore" ,
+        "nParticipants" ,
         "qualityScore"  ,
         "invivoSurvivalSMD",
         "nInvivoStudies"   ,
@@ -23,10 +24,10 @@ shinyServer(function(input, output, session) {
         "nInVitroStudies"
       ) 
     
-    cols <- c(    "productScore",
+    cols <- c(    "distanceScore",
                   "efficacyScore"  ,
                   "safetyScore"  ,
-                  "studySizeScore" ,
+                  "nParticipants" ,
                   "qualityScore"  ,
                   "invivoSurvivalSMD",
                   "nCellDeathSMD"   )
@@ -36,23 +37,20 @@ shinyServer(function(input, output, session) {
     return(mydf)
   })
   ########drugtable-------------------------------------
+  
+  
   output$demodrugranklist <- DT::renderDataTable(DT::datatable(
     demodrugranklist(),
     colnames=c("Drug",
-               "Clinical Product Score",
+               "Clinical Drug Score",
                "Clinical n(Pub)", 
-               "[E]",
-               "[S]",
-               "[SS]",
-               "[Q]",
+               "median efficacy (-2 - 4)","median safety score (0-3)","median number of participants","median quality score (out of 24)",
                "In vivo survival SMD",
                "in vivo n(Pub)",
                "In vitro cell death SMD",
                "in vitro n(Pub)"),
     filter="top",
-    caption= htmltools::tags$caption(
-      style='caption-side:bottom; text-align:center;', 
-      "Current results summary of (i) clinical review: publications for interventions were scored against predefined criteria (see the About tab for more information). Clinical publications were assigned scores for efficacy[E], safety[S], study size [SS] and quality [Q] (1: worst, 4: best). For each intervention, using the median scores from publications, a product score was generated. (Product score = log10(1 + number of clinical publications)*[E]*[S]*[SS]*[Q]); (ii)in vivo and (iii) in vitro review are reported here by the standard mean deviation (SMD) in survival and cell death studies respectively calculated from our meta-analysis. n(Pub) refers to number of publications annotated for each drug in our review.")
+    caption= htmltools::tags$caption(style = 'caption-side:bottom; text-align:left;',   c("Current results summary of (i) clinical review: For each publication, we calculated a distance score based on Euclidean distance of efficacy and safety scores weighted by quality and study size. For each drug, we calculate a drug score using the number of publications describing the drug (n) and median publication distance score for all publications describing data for that drug:", withMathJax("$$\\text{drug score}\\ = log10{(n+1)} \\times {(\\text{median distance score})}$$"), "Separately, we calculate median subscores for efficacy, safety, quality and number of participants across all publications for each drug. See 'About' tab for more details on scoring; (ii) in vivo and (iii) in vitro review are reported here by the standard mean deviation (SMD) in survival and cell death studies respectively calculated from our meta-analysis. n(Pub) refers to number of publications annotated for each drug in our review."), escape=F)
   ))
   #######download drug table-------------------------------------
   output$demodownloadDrugTable <- downloadHandler(
@@ -98,7 +96,7 @@ shinyServer(function(input, output, session) {
         '</br> Drug:',
         Drug,
         '</br> Clinical Score:',
-        round(productScore, digits = 2),
+        round(distanceScore, digits = 2),
         '</br> n(clinical publications):',
         nPublication,
         '</br> in vivo SMD:',
@@ -111,15 +109,15 @@ shinyServer(function(input, output, session) {
       mode = 'markers',
       
       marker = list(
-      size = ~nPublication,
+        size = ~nPublication,
         sizeref=0.1,
         sizemode="area",
         opacity = 0.5,
-        color = ~ productScore,
+        color = ~ distanceScore,
         colorscale = 'Viridis', 
         reversescale=TRUE,
         showscale=T,
-        colorbar=list(title='Product Score'),
+        colorbar=list(title='Drug Score'),
         sizemin= 3, 
         showlegend=T)
     )%>%
@@ -172,17 +170,27 @@ shinyServer(function(input, output, session) {
   
   ###############
   #drug heatmap-------------------------------------
-  demoproductscoredata <- demodrugSummary %>%
-    select("productScore")%>%
-    arrange(desc(productScore))
-  demoproductscoredata <- as.matrix(demoproductscoredata)
-  rownames(demoproductscoredata) <- demodrugSummary$Drug
+  demodistancescoredata <- demodrugSummary %>%
+    select("distanceScore")%>%
+    arrange(desc(distanceScore))
+  demodistancescoredata <- as.matrix(demodistancescoredata)
+  rownames(demodistancescoredata) <- demodrugSummary$Drug
+  
+  qualityQuartiles <- quantile(demodrugSummary$qualityScore)
   
   democlinicaldata <- demodrugSummary %>%
+    mutate(studySizeScore = ifelse(nParticipants <10, 1,
+                                   ifelse(nParticipants <100, 2,
+                                          ifelse(nParticipants <1000, 3, 4))))%>%
+    mutate(qualityScore = ifelse(qualityScore <qualityQuartiles[1],1,
+                                 ifelse(qualityScore < qualityQuartiles[2],2,
+                                        ifelse(qualityScore < qualityQuartiles[3],3 ,4))))%>%
+    
     select("efficacyScore"  ,
            "safetyScore"  ,
            "studySizeScore" ,
            "qualityScore")
+  
   democlinicaldata <- as.matrix(democlinicaldata)
   rownames(democlinicaldata) <- demodrugSummary$Drug
   
@@ -194,11 +202,11 @@ shinyServer(function(input, output, session) {
   
   
   output$demohm<-renderPlotly({
-    fig3<-plot_ly(z=demoproductscoredata, x=colnames(demoproductscoredata), y=rownames(demoproductscoredata)
+    fig3<-plot_ly(z=demodistancescoredata, x=colnames(demodistancescoredata), y=rownames(demodistancescoredata)
                   , type='heatmap', height=1300, width= 1000, colorscale="Viridis", reversescale=TRUE, 
-                  colorbar=list(title='Clinical Product Score'))%>%
+                  colorbar=list(title='Clinical Drug Score'))%>%
       layout(yaxis=list(autorange='reversed'),
-             xaxis=(list(title="Clinical Product Score")))
+             xaxis=(list(title="Clinical Drug Score")))
     
     fig1<-plot_ly(z=democlinicaldata, x=colnames(democlinicaldata), y=rownames(democlinicaldata)
                   , type='heatmap', colorscale="magma", colorbar=list(title='Clinical subscores'))
@@ -564,82 +572,140 @@ shinyServer(function(input, output, session) {
   
   #drugCV-------------------------------------
   
-  output$demoselecteddrugrankchart<-renderPlotly({
-    demodrugrankchart <- plot_ly(
-      demodrugSummary,
-      x = ~ invivoSurvivalSMD,
-      y = ~ nCellDeathSMD,
-      hoverinfo = 'text',
-      
-      text = ~ paste(
-        '</br> Drug:',
-        Drug,
-        '</br> Clinical Score:',
-        round(productScore, digits = 2),
-        '</br> n(clinical publications):',
-        nPublication,
-        '</br> in vivo SMD:',
-        round(invivoSurvivalSMD, digits = 2),
-        '</br> in vitro SMD:',
-        round(nCellDeathSMD),
-        digits = 2
-      ),
-      type = 'scatter',
-      mode = 'markers',
-      
-      marker = list(size = ~ nPublication,
-                    opacity = 0.5,
-                    color = ~ productScore,
-                    colorscale = 'Viridis', 
-                    reversescale=TRUE,
-                    showscale=T,
-                    colorbar=list(title='Product Score'),
-                    sizemin= 3
-      )
-    )%>%
-      layout(title="Clinical, in vivo and in vitro scores by drug",
-             xaxis=(list(title="In vivo Survival SMD")),
-             yaxis=(list(title="In vitro cell death SMD")))
-    demodrugrankchart
+  
+  drugScores<-data.frame(x=demodrugSummary$Drug,y=as.numeric(demodrugSummary$distanceScore))
+  
+  selectedDrugScore <- reactive({
+    selectedDrugScore <- drugScores%>% 
+      filter(x %in% input$demodrug)%>%
+      select(y)%>%
+      as.numeric()
     
-    demodrugbubble<-demodrugrankchart%>%add_markers(showlegend=F)
-    demodrugbubble<-demodrugbubble%>%layout(annotations=demodrugannot(input$demodrug))
-    demodrugbubble
-    
-    s<-c(1,seq(10,100, by= 10))
-    
-    legend.plot<-plot_ly(y =1, x= ~s)%>%
-      add_markers(y=1,
-                  x= ~s,
-                  size=  ~s,
-                  color= 'rgba(255, 182, 193, .9)',
-                  showlegend=F,
-                  hoverinfo="none",
-                  marker=list(sizeref=0.1, sizemode="area"))%>%
-      layout(
-        annotations=list(text="n(clinical publications)", x=-10, y=1, showarrow=F ),
-        xaxis=list(
-          title='',
-          tick0=0,
-          dtick=10,
-          zeroline=F,
-          showline=F,
-          showgrid=F,
-          tickvals= list(1,10,20,30,40,50,60,70,80,90,100),
-          tickmode="array"),
-        yaxis=list(
-          showgrid=F,
-          zeroline=F,
-          showline=F,
-          showticklabels=F
-          
-        )
-        
-      )
-    
-    selecteddrugchart<-subplot(demodrugbubble, legend.plot, nrows=2, heights= c(0.8,0.2), margin=0.1, titleX=T, titleY = T)%>%layout(height=600)
-    return(selecteddrugchart)
+    return(selectedDrugScore)
   })
+  
+  
+  
+  output$demoselecteddrugrankchart<- renderPlot({
+    demodrugrankchart<-ggplot(drugScores, aes(y=y, x=""))+
+      labs(y="Drug Score", x="")+
+      geom_violin(trim=F, fill="cadetblue2")+
+      geom_dotplot(dotsize=0.5, binaxis='y', stackdir='center', binwidth=0.25)+
+      annotate(geom="point", x="", y=selectedDrugScore(), shape=13, colour="red3", size=5,stroke=2)
+    demodrugrankchart
+  })
+  
+  drugSafety <- reactive({
+    drugSafety<- demodrugSummary%>%filter(Drug %in% input$demodrug)%>%select(safetyScore)%>%as.numeric()
+    return(drugSafety)
+  })
+  
+  drugEfficacy <- reactive({
+    drugEfficacy<- demodrugSummary%>%filter(Drug %in% input$demodrug)%>%select(efficacyScore)%>%as.numeric()
+    return(drugEfficacy)
+  })
+  
+  
+  output$demoselecteddrugbubblechart<- renderPlot({
+    demodrugbubblechart<- ggplot(
+      demodrugSummary,
+      aes(
+        x = safetyScore,
+        y = efficacyScore,
+        size= nParticipants,
+        color= qualityScore
+      ))+ 
+      scale_color_gradient(low="yellow", high="red", limits=c(0,24))+ 
+      geom_point(alpha=1)+
+      # scale_size("studySizeScore", range=c(1,4))
+      theme(legend.position = "right")+
+      labs(x="Safety Score",
+           y="Efficacy Score",
+           color="Quality Score",
+           size="nParticipants")+
+      xlim(0,3)+
+      ylim(-2,4)+
+      annotate(geom = "point", x =  drugSafety(), y =  drugEfficacy(), shape=13, size=5,stroke=1, color="black")
+    demodrugbubblechart
+  })
+  
+  
+  # output$demoselecteddrugrankchart<-renderPlotly({
+  #   demodrugrankchart <- plot_ly(
+  #     demodrugSummary,
+  #     x = ~ invivoSurvivalSMD,
+  #     y = ~ nCellDeathSMD,
+  #     hoverinfo = 'text',
+  #     
+  #     text = ~ paste(
+  #       '</br> Drug:',
+  #       Drug,
+  #       '</br> Clinical Score:',
+  #       round(distanceScore, digits = 2),
+  #       '</br> n(clinical publications):',
+  #       nPublication,
+  #       '</br> in vivo SMD:',
+  #       round(invivoSurvivalSMD, digits = 2),
+  #       '</br> in vitro SMD:',
+  #       round(nCellDeathSMD),
+  #       digits = 2
+  #     ),
+  #     type = 'scatter',
+  #     mode = 'markers',
+  #     
+  #     marker = list(size = ~ nPublication,
+  #                   opacity = 0.5,
+  #                   color = ~ distanceScore,
+  #                   colorscale = 'Viridis', 
+  #                   reversescale=TRUE,
+  #                   showscale=T,
+  #                   colorbar=list(title='Drug Score'),
+  #                   sizemin= 3
+  #     )
+  #   )%>%
+  #     layout(title="Clinical, in vivo and in vitro scores by drug",
+  #            xaxis=(list(title="In vivo Survival SMD")),
+  #            yaxis=(list(title="In vitro cell death SMD")))
+  #   demodrugrankchart
+  #   
+  #   demodrugbubble<-demodrugrankchart%>%add_markers(showlegend=F)
+  #   demodrugbubble<-demodrugbubble%>%layout(annotations=demodrugannot(input$demodrug))
+  #   demodrugbubble
+  #   
+  #   s<-c(1,seq(10,100, by= 10))
+  #   
+  #   legend.plot<-plot_ly(y =1, x= ~s)%>%
+  #     add_markers(y=1,
+  #                 x= ~s,
+  #                 size=  ~s,
+  #                 color= 'rgba(255, 182, 193, .9)',
+  #                 showlegend=F,
+  #                 hoverinfo="none",
+  #                 marker=list(sizeref=0.1, sizemode="area"))%>%
+  #     layout(
+  #       annotations=list(text="n(clinical publications)", x=-10, y=1, showarrow=F ),
+  #       xaxis=list(
+  #         title='',
+  #         tick0=0,
+  #         dtick=10,
+  #         zeroline=F,
+  #         showline=F,
+  #         showgrid=F,
+  #         tickvals= list(1,10,20,30,40,50,60,70,80,90,100),
+  #         tickmode="array"),
+  #       yaxis=list(
+  #         showgrid=F,
+  #         zeroline=F,
+  #         showline=F,
+  #         showticklabels=F
+  #         
+  #       )
+  #       
+  #     )
+  #   
+  #   selecteddrugchart<-subplot(demodrugbubble, legend.plot, nrows=2, heights= c(0.8,0.2), margin=0.1, titleX=T, titleY = T)%>%layout(height=600)
+  #   return(selecteddrugchart)
+  # })
   ###########################
   ##
   demoselecteddrugranklist <- reactive({
@@ -647,23 +713,23 @@ shinyServer(function(input, output, session) {
       filter(Drug%in% input$demodrug)%>%
       select(
         "Drug",
-        "productScore",
+        "distanceScore",
         "nPublication",
         "efficacyScore"  ,
         "safetyScore"  ,
-        "studySizeScore" ,
+        "nParticipants" ,
         "qualityScore"  ,
         "invivoSurvivalSMD",
         "nInvivoStudies"   ,
         "nCellDeathSMD"   ,
         "nInVitroStudies"
       ) %>%
-      arrange(desc(productScore))
+      arrange(desc(distanceScore))
     cols<- c(
-      "productScore",
+      "distanceScore",
       "efficacyScore"  ,
       "safetyScore"  ,
-      "studySizeScore" ,
+      "nParticipants" ,
       "qualityScore"  ,
       "invivoSurvivalSMD",
       "nCellDeathSMD")
@@ -673,23 +739,18 @@ shinyServer(function(input, output, session) {
     
   })
   ########drugtable-------------------------------------
+  
   output$demoselecteddrugranklist <- DT::renderDataTable(DT::datatable(
     demoselecteddrugranklist(),
     colnames=c("Drug",
-               "Clinical Product Score",
+               "Clinical Drug Score",
                "Clinical n(Pub)", 
-               "[E]",
-               "[S]",
-               "[SS]",
-               "[Q]",
+               "median efficacy (-2 - 4)","median safety score (0-3)","median number of participants","median quality score (out of 24)",
                "In vivo survival SMD",
                "in vivo n(Pub)",
                "In vitro cell death SMD",
                "in vitro n(Pub)"),
-    caption= htmltools::tags$caption(
-      style='caption-side:bottom; text-align:center;', 
-      "Current results summary of (i) clinical review: publications for interventions were scored against predefined criteria (see the About tab for more information). Clinical publications were assigned scores for efficacy[E], safety[S], study size [SS] and quality [Q] (1: worst, 4: best). For each intervention, using the median scores from publications, a product score was generated. (Product score = log10(1 + number of clinical publications)*[E]*[S]*[SS]*[Q]); (ii)in vivo and (iii) in vitro review are reported here by the standard mean deviation (SMD) in survival and cell death studies respectively calculated from our meta-analysis. n(Pub) refers to number of publications annotated for each drug in our review."),
-    
+    caption= htmltools::tags$caption(style = 'caption-side:bottom; text-align:left;',   c("Current results summary of (i) clinical review: For each publication, we calculated a distance score based on Euclidean distance of efficacy and safety scores weighted by quality and study size. For each drug, we calculate a drug score using the number of publications describing the drug (n) and median publication distance score for all publications describing data for that drug:", withMathJax("$$\\text{drug score}\\ = log10{(n+1)} \\times {(\\text{median distance score})}$$"), "Separately, we calculate median subscores for efficacy, safety, quality and number of participants across all publications for each drug. See 'About' tab for more details on scoring; (ii) in vivo and (iii) in vitro review are reported here by the standard mean deviation (SMD) in survival and cell death studies respectively calculated from our meta-analysis. n(Pub) refers to number of publications annotated for each drug in our review."), escape=F), 
     list(dom='t',
          ordering=F),
     rownames=F
@@ -741,10 +802,10 @@ shinyServer(function(input, output, session) {
     demodrugscoredata <- demodrugSummary %>%
       filter(Drug %in% input$demodrug) %>%
       select(
-        "productScore",
+        "distanceScore",
         "efficacyScore",
         "safetyScore",
-        "studySizeScore",
+        "nParticipants",
         "qualityScore"
       )
     
@@ -755,7 +816,7 @@ shinyServer(function(input, output, session) {
   output$demoselectedclinscoresummary <-
     DT::renderDataTable(DT::datatable(
       demoselectedclinscoresummary(),
-      rownames=c("Product Score",
+      rownames=c("Drug Score",
                  "Efficacy Score",
                  "Safety Score",
                  "Study Size Score",
@@ -768,8 +829,8 @@ shinyServer(function(input, output, session) {
         formatStyle(
           0,
           target = "row",
-          fontWeight = styleEqual("Product Score", "bold"),
-          backgroundColor = styleEqual("Product Score", "lightblue")
+          fontWeight = styleEqual("Drug Score", "bold"),
+          backgroundColor = styleEqual("Drug Score", "lightblue")
         )
     )
   
@@ -1000,7 +1061,7 @@ shinyServer(function(input, output, session) {
         "nPatients",
         "efficacyScore",
         "safetyScore",
-        "studySizeScore",
+        "nParticipants",
         "qualityScore"
       )
     
@@ -1242,7 +1303,7 @@ shinyServer(function(input, output, session) {
     df<-df%>%
       filter(Drug %in% input$demodrug)
     df<-df[!is.na(df$celldeathTE),]
-  
+    
     studyNames<-paste(df$Author, "", df$Year)
     
     return(studyNames)
@@ -1494,26 +1555,26 @@ shinyServer(function(input, output, session) {
   ####live drug recommendations---------------------
   #live drug recommendations-------------------------------------
   livedrugranklist <- reactive({
-    mydf <- drugSummary %>%
+    mydf <- demodrugSummary %>%
       select(
         "Drug",
-        "productScore",
+        "distanceScore",
         "nPublication",
         "efficacyScore"  ,
         "safetyScore"  ,
-        "studySizeScore" ,
+        "nParticipants" ,
         "qualityScore"  ,
         "invivoSurvivalSMD",
         "nInvivoStudies"   ,
         "nCellDeathSMD"   ,
         "nInVitroStudies"
       ) %>%
-      arrange(desc(productScore))
+      arrange(desc(distanceScore))
     
-    cols <- c(    "productScore",
+    cols <- c(    "distanceScore",
                   "efficacyScore"  ,
                   "safetyScore"  ,
-                  "studySizeScore" ,
+                  "nParticipants" ,
                   "qualityScore"    )
     
     mydf[,cols] <-round(mydf[,cols],2)
@@ -1523,12 +1584,12 @@ shinyServer(function(input, output, session) {
   output$livedrugranklist <- DT::renderDataTable(DT::datatable(
     livedrugranklist(),
     colnames=c("Drug",
-               "Clinical Product Score",
+               "Clinical Drug Score",
                "Clinical n(Pub)", 
-               "[E]",
-               "[S]",
-               "[SS]",
-               "[Q]",
+               "median efficacy (-2 - 4)",
+               "median safety score (0-3)",
+               "median number of participants",
+               "median quality score (out of 24)",
                "In vivo survival SMD",
                "in vivo n(Pub)",
                "In vitro cell death SMD",
@@ -1536,8 +1597,8 @@ shinyServer(function(input, output, session) {
     filter="top",
     caption= htmltools::tags$caption(
       style='caption-side:bottom; text-align:center;', 
-      "Current results summary of (i) clinical review: publications for interventions were scored against predefined criteria (see the About tab for more information). Clinical publications were assigned scores for efficacy[E], safety[S], study size [SS] and quality [Q] (1: worst, 4: best). For each intervention, using the median scores from publications, a product score was generated. (Product score = log10(1 + number of clinical publications)*[E]*[S]*[SS]*[Q]); (ii)in vivo and (iii) in vitro review are reported here by the standard mean deviation (SMD) in survival and cell death studies respectively calculated from our meta-analysis. n(Pub) refers to number of publications annotated for each drug in our review.")
-  ))
+      caption= htmltools::tags$caption(style = 'caption-side:bottom; text-align:left;',   c("Current results summary of (i) clinical review: For each publication, we calculated a distance score based on Euclidean distance of efficacy and safety scores weighted by quality and study size. For each drug, we calculate a drug score using the number of publications describing the drug (n) and median publication distance score for all publications describing data for that drug:", withMathJax("$$\\text{drug score}\\ = log10{(n+1)} \\times {(\\text{median distance score})}$$"), "Separately, we calculate median subscores for efficacy, safety, quality and number of participants across all publications for each drug. See 'About' tab for more details on scoring; (ii) in vivo and (iii) in vitro review are reported here by the standard mean deviation (SMD) in survival and cell death studies respectively calculated from our meta-analysis. n(Pub) refers to number of publications annotated for each drug in our review."), escape=F) 
+    )))
   #######download drug table-------------------------------------
   output$downloadLiveDrugTable <- downloadHandler(
     filename = function() {
@@ -1599,33 +1660,33 @@ shinyServer(function(input, output, session) {
   
   ###############
   #drug heatmap-------------------------------------
-  productscoredata <- drugSummary %>%
-    select("productScore")%>%
-    arrange(desc(productScore))
-  productscoredata <- as.matrix(productscoredata)
-  rownames(productscoredata) <- drugSummary$Drug
+  distancescoredata <- demodrugSummary %>%
+    select("distanceScore")%>%
+    arrange(desc(distanceScore))
+  distancescoredata <- as.matrix(distancescoredata)
+  rownames(distancescoredata) <- demodrugSummary$Drug
   
-  clinicaldata <- drugSummary %>%
+  clinicaldata <- demodrugSummary %>%
     select("efficacyScore"  ,
            "safetyScore"  ,
-           "studySizeScore" ,
+           "nParticipants" ,
            "qualityScore")
   clinicaldata <- as.matrix(clinicaldata)
-  rownames(clinicaldata) <- drugSummary$Drug
+  rownames(clinicaldata) <- demodrugSummary$Drug
   
   
-  preclinicaldata <- drugSummary %>%
+  preclinicaldata <- demodrugSummary %>%
     select("invivoSurvivalSMD", "nCellDeathSMD")
   preclinicaldata <- as.matrix(preclinicaldata)
-  rownames(preclinicaldata) <- drugSummary$Drug
+  rownames(preclinicaldata) <- demodrugSummary$Drug
   
   
   output$hm<-renderPlotly({
-    fig3<-plot_ly(z=productscoredata, x=colnames(productscoredata), y=rownames(productscoredata)
+    fig3<-plot_ly(z=distancescoredata, x=colnames(distancescoredata), y=rownames(distancescoredata)
                   , type='heatmap', height=1300, width= 1000, colorscale="Viridis", reversescale=TRUE, 
-                  colorbar=list(title='Clinical Product Score'))%>%
+                  colorbar=list(title='Clinical Drug Score'))%>%
       layout(yaxis=list(autorange='reversed'),
-             xaxis=(list(title="Clinical Product Score")))
+             xaxis=(list(title="Clinical Drug Score")))
     
     fig1<-plot_ly(z=clinicaldata, x=colnames(clinicaldata), y=rownames(clinicaldata)
                   , type='heatmap', colorscale="magma", colorbar=list(title='Clinical subscores'))
@@ -1644,7 +1705,7 @@ shinyServer(function(input, output, session) {
   #####plotlysunburst-----------------------------
   
   
-  sunburstdata <- publicationList %>%
+  sunburstdata <- demopublicationList %>%
     select(Disease, studyType, phase, Drug, StudyIdStr)%>%
     unique() %>%
     group_by(Disease, studyType, phase, Drug, StudyIdStr) %>%
@@ -1815,7 +1876,7 @@ shinyServer(function(input, output, session) {
   output$ClinicalReconciled <- renderInfoBox({
     infoBox(
       "Reconciled publications",
-      as.numeric(nClinicalReconciled),
+      as.numeric(demonClinicalReconciled),
       icon = icon("check"),
       color = "olive"
     )
@@ -1991,6 +2052,8 @@ shinyServer(function(input, output, session) {
   
   #drugCV-------------------------------------
   
+  
+  
   ####selected drug chart activate when invivo invitro available
   # output$selecteddrugrankchart<-renderPlotly({
   #    drugrankchart <- plot_ly(
@@ -2037,50 +2100,49 @@ shinyServer(function(input, output, session) {
   ###########################
   ##
   selecteddrugranklist <- reactive({
-    drugSummary %>%
+    demodrugSummary %>%
       filter(Drug%in% input$drug)%>%
       select(
         "Drug",
-        "productScore",
+        "distanceScore",
         "nPublication",
         "efficacyScore"  ,
         "safetyScore"  ,
-        "studySizeScore" ,
+        "nParticipants" ,
         "qualityScore"  ,
         "invivoSurvivalSMD",
         "nInvivoStudies"   ,
         "nCellDeathSMD"   ,
         "nInVitroStudies"
       ) %>%
-      arrange(desc(productScore))
+      arrange(desc(distanceScore))
     
   })
   ########drugtable-------------------------------------
-  output$selecteddrugranklist <- DT::renderDataTable(DT::datatable(
-    selecteddrugranklist(),
-    colnames=c("Drug",
-               "Clinical Product Score",
-               "Clinical n(Pub)", 
-               "[E]",
-               "[S]",
-               "[SS]",
-               "[Q]",
-               "In vivo survival SMD",
-               "in vivo n(Pub)",
-               "In vitro cell death SMD",
-               "in vitro n(Pub)"),
-    caption= htmltools::tags$caption(
-      style='caption-side:bottom; text-align:center;', 
-      "Current results summary of (i) clinical review: publications for interventions were scored against predefined criteria (see the About tab for more information). Clinical publications were assigned scores for efficacy[E], safety[S], study size [SS] and quality [Q] (1: worst, 4: best). For each intervention, using the median scores from publications, a product score was generated. (Product score = log10(1 + number of clinical publications)*[E]*[S]*[SS]*[Q]); (ii)in vivo and (iii) in vitro review are reported here by the standard mean deviation (SMD) in survival and cell death studies respectively calculated from our meta-analysis. n(Pub) refers to number of publications annotated for each drug in our review."),
-    list(dom='t',
-         ordering=F),
-    rownames=F
-  ))
+  output$selecteddrugranklist <-
+    DT::renderDataTable(DT::datatable(
+      selecteddrugranklist()
+      , rownames=F
+      , colnames=c("Drug",
+                   "Clinical Drug Score",
+                   "Clinical n(Pub)",
+                   "median efficacy (-2 - 4)",
+                   "median safety score (0-3)",
+                   "median number of participants",
+                   "median quality score (out of 24)",
+                   "In vivo survival SMD",
+                   "in vivo n(Pub)",
+                   "In vitro cell death SMD",
+                   "in vitro n(Pub)"),
+      caption= htmltools::tags$caption(style = 'caption-side:bottom; text-align:left;',   c("Current results summary of (i) clinical review: For each publication, we calculated a distance score based on Euclidean distance of efficacy and safety scores weighted by quality and study size. For each drug, we calculate a drug score using the number of publications describing the drug (n) and median publication distance score for all publications describing data for that drug:", withMathJax("$$\\text{drug score}\\ = log10{(n+1)} \\times {(\\text{median distance score})}$$"), "Separately, we calculate median subscores for efficacy, safety, quality and number of participants across all publications for each drug. See 'About' tab for more details on scoring; (ii) in vivo and (iii) in vitro review are reported here by the standard mean deviation (SMD) in survival and cell death studies respectively calculated from our meta-analysis. n(Pub) refers to number of publications annotated for each drug in our review."), escape=F)
+      , options = list(dom = 't')
+      , extensions = 'Responsive'
+    ))
   
   #####ClinicalPubSummary-------------------------------------
   
   selectedclinpubsummary <- reactive({
-    drugpubdata <- drugSummary %>%
+    drugpubdata <- demodrugSummary %>%
       filter(Drug %in% input$drug) %>%
       select(
         "nPublication",
@@ -2120,13 +2182,13 @@ shinyServer(function(input, output, session) {
     )
   #####ClinicalScoreSummary-------------------------------------
   selectedclinscoresummary <- reactive({
-    drugscoredata <- drugSummary %>%
+    drugscoredata <- demodrugSummary %>%
       filter(Drug %in% input$drug) %>%
       select(
-        "productScore",
+        "distanceScore",
         "efficacyScore",
         "safetyScore",
-        "studySizeScore",
+        "nParticipants",
         "qualityScore"
       )
     
@@ -2137,7 +2199,7 @@ shinyServer(function(input, output, session) {
   output$selectedclinscoresummary <-
     DT::renderDataTable(DT::datatable(
       selectedclinscoresummary(),
-      rownames=c("Product Score",
+      rownames=c("Drug Score",
                  "Efficacy Score",
                  "Safety Score",
                  "Study Size Score",
@@ -2150,8 +2212,8 @@ shinyServer(function(input, output, session) {
         formatStyle(
           0,
           target = "row",
-          fontWeight = styleEqual("Product Score", "bold"),
-          backgroundColor = styleEqual("Product Score", "lightblue")
+          fontWeight = styleEqual("Drug Score", "bold"),
+          backgroundColor = styleEqual("Drug Score", "lightblue")
         )
     )
   
@@ -2160,7 +2222,7 @@ shinyServer(function(input, output, session) {
   
   
   sdsunburstdata <- reactive({
-    drugsbdata<-publicationList %>%
+    drugsbdata<-demopublicationList %>%
       filter(Drug %in% input$drug)%>%
       select(Disease, studyType, phase, StudyIdStr)%>%
       unique() %>%
@@ -2246,7 +2308,7 @@ shinyServer(function(input, output, session) {
   #####drugptsunburst---------------------
   
   sdptsunburstdata <- reactive({
-    drugptsbdata<-publicationList %>%
+    drugptsbdata<-demopublicationList %>%
       filter(Drug %in% input$drug)%>%
       select(Disease, studyType, phase, nPatients)%>%
       unique() %>%
@@ -2327,6 +2389,24 @@ shinyServer(function(input, output, session) {
   })
   
   
+  #####drugCVpdf--------------------
+  
+  output$drugCV<-downloadHandler(
+    filename="drugCV.html",
+    content=function(file){
+      tempReport<-file.path(tempdir(), "drugCV.Rmd")
+      file.copy("drugCV.Rmd", tempReport, overwrite=TRUE)
+      
+      params<-list(n=input$demodrug)
+      
+      rmarkdown::render(tempReport,output_file=file,
+                        params=params,
+                        envir=new.env(parent=globalenv()))
+      
+    }
+    
+  )
+  
   
   
   
@@ -2338,7 +2418,7 @@ shinyServer(function(input, output, session) {
   
   
   selecteddrugclinicalpubtable <- reactive({
-    drugclinicalpubtable <- publicationList %>%
+    drugclinicalpubtable <- demopublicationList %>%
       filter(Drug %in% input$drug) %>%
       select(
         "Title",
@@ -2373,7 +2453,7 @@ shinyServer(function(input, output, session) {
     ))
   
   selecteddrugclinicalpublications <- reactive({
-    drugclinicalpublications <- publicationList %>%
+    drugclinicalpublications <- demopublicationList %>%
       filter(Drug %in% input$drug) %>%
       select(
         "Title",
@@ -2388,7 +2468,7 @@ shinyServer(function(input, output, session) {
         "nPatients",
         "efficacyScore",
         "safetyScore",
-        "studySizeScore",
+        "nParticipants",
         "qualityScore"
       )%>%unique()
     
@@ -2567,7 +2647,7 @@ shinyServer(function(input, output, session) {
   
   #download---------------------------------------------
   #
-  pList<-    as.data.frame(publicationList)
+  pList<-    as.data.frame(demopublicationList)
   
   output$catclinicalpubs<-downloadHandler(
     filename=function() {
